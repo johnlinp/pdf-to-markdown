@@ -11,7 +11,7 @@ def num_start(line, nums):
     return False
 
 def big_num_start(line):
-    return num_start(line, ['壹', '貳', '參', '肆', '伍', '陸', '柒', '捌', '玖', '拾'])
+    return num_start(line, ['壹', '貳', '參', '肆', '伍', '陸', '柒', '捌', '玖', '拾'])
 
 def small_num_start(line):
     return num_start(line, ['一', '二', '三', '四', '五', '六', '七', '八', '九', '十'])
