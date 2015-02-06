@@ -18,8 +18,9 @@ from pdfminer.converter import PDFPageAggregator
 
 
 def parse(layout):
-	vertical, horizontal = set(), set()
+	vertical, horizontal = [], []
 	lines = []
+
 	objstack = list(reversed(list(layout)))
 	while objstack:
 		b = objstack.pop()
@@ -28,10 +29,14 @@ def parse(layout):
 		elif type(b) == LTTextLineHorizontal:
 			lines.append(b)
 		elif type(b) == LTRect:
-			if b.x1 - b.x0 < 2.0:
-				vertical.add(b.y0)
-			elif b.y1 - b.y0 < 2.0:
-				horizontal.add(b.x0)
+			if b.x1 - b.x0 < 1.0:
+				vertical.append((b.x0, b.y0, b.y1))
+			elif b.y1 - b.y0 < 1.0:
+				horizontal.append((b.y0, b.x0, b.x1))
+			elif 15.0 < b.y1 - b.y0 < 18.0: # grey blocks
+				pass
+			else:
+				raise Exception('strange lines')
 		elif type(b) == LTImage:
 			pass
 		elif type(b) == LTCurve:
@@ -39,14 +44,16 @@ def parse(layout):
 		else:
 			assert False, "Unrecognized type: %s" % type(b)
 
+	vertical = sorted(vertical, reverse=True)
+	horizontal = sorted(horizontal, reverse=True)
+
 	return vertical, horizontal, lines
 
 
 def layout():
 	target_page = 13
 
-	fp = open('neihu.pdf', 'rb')
-	parser = PDFParser(fp)
+	parser = PDFParser(open('neihu.pdf', 'rb'))
 	document = PDFDocument(parser)
 	laparams = LAParams()
 	rsrcmgr = PDFResourceManager()
@@ -63,37 +70,32 @@ def layout():
 			break
 
 		print 'layout.pageid:', layout.pageid
-		all_vertical, all_horizontal = set(), set()
-		all_lines = []
-		for element in layout:
-			one_vertical, one_horizontal, one_lines = parse(layout)
-			all_vertical = all_vertical | one_vertical
-			all_horizontal = all_horizontal | one_horizontal
-			all_lines.extend(one_lines)
 
-		all_vertical = sorted(list(all_vertical))
-		all_horizontal = sorted(list(all_horizontal))
+		vertical, horizontal, lines = parse(layout)
+
+		print len(vertical), len(horizontal), len(lines)
 
 		division = '================================================='
 
 		print division
 		print 'all lines'
 		print division
-		for line in all_lines:
-			print line.x0, line.y0, (line.x1 - line.x0), (line.y1 - line.y0)
+		for line in lines:
+			print 'x: from {} to {}'.format(line.x0, line.x1)
+			print 'y: from {} to {}'.format(line.y0, line.y1)
 			print line.get_text().encode('utf8')
 			print division
 
 		print 'all vertical'
 		print division
-		for vertical in all_vertical:
-			print vertical
+		for vertical in vertical:
+			print 'x: {}, y: from {} to {}'.format(vertical[0], vertical[1], vertical[2])
 		print division
 
 		print 'all horizontal'
 		print division
-		for horizontal in all_horizontal:
-			print horizontal
+		for horizontal in horizontal:
+			print 'y: {}, x: from {} to {}'.format(horizontal[0], horizontal[1], horizontal[2])
 		print division
 
 
