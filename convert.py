@@ -18,7 +18,7 @@ from pdfminer.converter import PDFPageAggregator
 
 
 def parse(layout):
-	x_set, y_set = set(), set()
+	vertical, horizontal = set(), set()
 	lines = []
 	objstack = list(reversed(list(layout)))
 	while objstack:
@@ -29,9 +29,9 @@ def parse(layout):
 			lines.append(b)
 		elif type(b) == LTRect:
 			if b.x1 - b.x0 < 2.0:
-				x_set.add(b.y0)
-			else:
-				y_set.add(b.x0)
+				vertical.add(b.y0)
+			elif b.y1 - b.y0 < 2.0:
+				horizontal.add(b.x0)
 		elif type(b) == LTImage:
 			pass
 		elif type(b) == LTCurve:
@@ -39,7 +39,7 @@ def parse(layout):
 		else:
 			assert False, "Unrecognized type: %s" % type(b)
 
-	return x_set, y_set, lines
+	return vertical, horizontal, lines
 
 
 def layout():
@@ -63,16 +63,16 @@ def layout():
 			break
 
 		print 'layout.pageid:', layout.pageid
-		all_x_set, all_y_set = set(), set()
+		all_vertical, all_horizontal = set(), set()
 		all_lines = []
 		for element in layout:
-			one_x_set, one_y_set, one_lines = parse(layout)
-			all_x_set = all_x_set | one_x_set
-			all_y_set = all_y_set | one_y_set
+			one_vertical, one_horizontal, one_lines = parse(layout)
+			all_vertical = all_vertical | one_vertical
+			all_horizontal = all_horizontal | one_horizontal
 			all_lines.extend(one_lines)
 
-		all_x_list = sorted(list(all_x_set))
-		all_y_list = sorted(list(all_y_set))
+		all_vertical = sorted(list(all_vertical))
+		all_horizontal = sorted(list(all_horizontal))
 
 		division = '================================================='
 
@@ -80,20 +80,20 @@ def layout():
 		print 'all lines'
 		print division
 		for line in all_lines:
-			print line.x0, line.x1, line.y0, line.y1
+			print line.x0, line.y0, (line.x1 - line.x0), (line.y1 - line.y0)
 			print line.get_text().encode('utf8')
 			print division
 
-		print 'all x'
+		print 'all vertical'
 		print division
-		for x in all_x_list:
-			print x
+		for vertical in all_vertical:
+			print vertical
 		print division
 
-		print 'all y'
+		print 'all horizontal'
 		print division
-		for y in all_y_list:
-			print y
+		for horizontal in all_horizontal:
+			print horizontal
 		print division
 
 
