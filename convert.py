@@ -17,6 +17,56 @@ from pdfminer.layout import LTCurve
 from pdfminer.converter import PDFPageAggregator
 
 
+def html(vertical, horizontal, lines):
+	fw = open('page.html', 'w')
+
+	page_height = 800 # for flipping the coordinate
+
+	fw.write('<meta charset="utf8" />')
+	fw.write('<svg width="100%" height="100%">')
+
+	# flip coordinate
+	fw.write('<g transform="translate(0, {}) scale(1, -1)">'.format(page_height))
+
+	rect = '<rect width="{width}" height="{height}" x="{x}" y="{y}" fill="{fill}"><title>{text}</title></rect>'
+
+	for line in lines:
+		info = {
+			'width': line.x1 - line.x0,
+			'height': line.y1 - line.y0,
+			'x': line.x0,
+			'y': line.y0,
+			'text': line.get_text().encode('utf8'),
+			'fill': 'green',
+		}
+		fw.write(rect.format(**info))
+
+	for vertical in vertical:
+		info = {
+			'width': 1,
+			'height': vertical[2] - vertical[1],
+			'x': vertical[0],
+			'y': vertical[1],
+			'text': '',
+			'fill': 'blue',
+		}
+		fw.write(rect.format(**info))
+
+	for horizontal in horizontal:
+		info = {
+			'width': horizontal[2] - horizontal[1],
+			'height': 1,
+			'x': horizontal[1],
+			'y': horizontal[0],
+			'text': '',
+			'fill': 'red',
+		}
+		fw.write(rect.format(**info))
+
+	fw.write('</g>')
+	fw.write('</svg>')
+
+
 def parse(layout):
 	vertical, horizontal = [], []
 	lines = []
@@ -72,31 +122,8 @@ def layout():
 		print 'layout.pageid:', layout.pageid
 
 		vertical, horizontal, lines = parse(layout)
+		html(vertical, horizontal, lines)
 
-		print len(vertical), len(horizontal), len(lines)
-
-		division = '================================================='
-
-		print division
-		print 'all lines'
-		print division
-		for line in lines:
-			print 'x: from {} to {}'.format(line.x0, line.x1)
-			print 'y: from {} to {}'.format(line.y0, line.y1)
-			print line.get_text().encode('utf8')
-			print division
-
-		print 'all vertical'
-		print division
-		for vertical in vertical:
-			print 'x: {}, y: from {} to {}'.format(vertical[0], vertical[1], vertical[2])
-		print division
-
-		print 'all horizontal'
-		print division
-		for horizontal in horizontal:
-			print 'y: {}, x: from {} to {}'.format(horizontal[0], horizontal[1], horizontal[2])
-		print division
 
 
 if __name__ == '__main__':
