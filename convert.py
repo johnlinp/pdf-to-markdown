@@ -17,8 +17,105 @@ from pdfminer.layout import LTCurve
 from pdfminer.converter import PDFPageAggregator
 
 
-def html(vertical, horizontal, lines):
-	fw = open('page.html', 'w')
+def is_overlap(top, bottom, obj):
+	return (bottom - 1.0) <= obj.y0 <= (top + 1.0) or \
+		   (bottom - 1.0) <= obj.y1 <= (top + 1.0)
+
+
+def calc_top_bottom(objects):
+	top = float('-inf')
+	bottom = float('inf')
+	for obj in objects:
+		top = max(top, obj.y1)
+		bottom = min(bottom, obj.y0)
+	return top, bottom
+
+
+def find_near_verticals(start, verticals):
+	near_verticals = [start]
+	top = start.y1
+	bottom = start.y0
+	for vertical in verticals:
+		if vertical == start:
+			continue
+		if is_overlap(top, bottom, vertical):
+			near_verticals.append(vertical)
+			top, bottom = calc_top_bottom(near_verticals)
+	return near_verticals
+
+
+def find_included(top, bottom, objects):
+	included = []
+	for obj in objects:
+		if is_overlap(top, bottom, obj):
+			included.append(obj)
+	return included
+
+
+def find_tables(verticals, horizontals, lines):
+	tables = []
+	visited = set()
+	for vertical in verticals:
+		if vertical in visited:
+			continue
+
+		near_verticals = find_near_verticals(vertical, verticals)
+		top, bottom = calc_top_bottom(near_verticals)
+		included_horizontals = find_included(top, bottom, horizontals)
+		included_lines = find_included(top, bottom, lines)
+
+		table = {
+			'verticals': near_verticals,
+			'horizontals': included_horizontals,
+			'lines': included_lines,
+		}
+
+		tables.append(table)
+		visited.update(near_verticals)
+	return tables
+
+
+def find_paragraphs(lines, tables):
+	tops = []
+	for table in tables:
+		verticals = table['verticals']
+		top, bottom = calc_top_bottom(verticals)
+		tops.append(top)
+
+	all_table_lines = set()
+	for table in tables:
+		table_lines = table['lines']
+		all_table_lines.update(table_lines)
+
+	num_slots = len(tables) + 1
+	paragraphs = [[] for idx in range(num_slots)]
+	for line in lines:
+		if line in all_table_lines:
+			continue
+		for idx, table in enumerate(tables):
+			if line.y0 > tops[idx]:
+				paragraphs[idx].append(line)
+				break
+
+	paragraphs = filter(None, paragraphs)
+	paragraphs = [{'lines': paragraph, 'verticals': [], 'horizontals': []} for paragraph in paragraphs]
+
+	return paragraphs
+
+
+def find_groups(verticals, horizontals, lines):
+	groups = []
+
+	tables = find_tables(verticals, horizontals, lines)
+	paragraphs = find_paragraphs(lines, tables)
+
+	groups = sorted(tables + paragraphs, reverse=True, key=lambda x: x['lines'][0].y0)
+
+	return groups
+
+
+def gen_html(filename, verticals, horizontals, lines):
+	fw = open(filename, 'w')
 
 	page_height = 800 # for flipping the coordinate
 
@@ -41,23 +138,23 @@ def html(vertical, horizontal, lines):
 		}
 		fw.write(rect.format(**info))
 
-	for vertical in vertical:
+	for vertical in verticals:
 		info = {
 			'width': 1,
-			'height': vertical[2] - vertical[1],
-			'x': vertical[0],
-			'y': vertical[1],
+			'height': vertical.y1 - vertical.y0,
+			'x': vertical.x0,
+			'y': vertical.y0,
 			'text': '',
 			'fill': 'blue',
 		}
 		fw.write(rect.format(**info))
 
-	for horizontal in horizontal:
+	for horizontal in horizontals:
 		info = {
-			'width': horizontal[2] - horizontal[1],
+			'width': horizontal.x1 - horizontal.x0,
 			'height': 1,
-			'x': horizontal[1],
-			'y': horizontal[0],
+			'x': horizontal.x0,
+			'y': horizontal.y0,
 			'text': '',
 			'fill': 'red',
 		}
@@ -67,8 +164,8 @@ def html(vertical, horizontal, lines):
 	fw.write('</svg>')
 
 
-def parse(layout):
-	vertical, horizontal = [], []
+def parse_page(layout):
+	verticals, horizontals = [], []
 	lines = []
 
 	objstack = list(reversed(list(layout)))
@@ -80,9 +177,9 @@ def parse(layout):
 			lines.append(b)
 		elif type(b) == LTRect:
 			if b.x1 - b.x0 < 1.0:
-				vertical.append((b.x0, b.y0, b.y1))
+				verticals.append(b)
 			elif b.y1 - b.y0 < 1.0:
-				horizontal.append((b.y0, b.x0, b.x1))
+				horizontals.append(b)
 			elif 15.0 < b.y1 - b.y0 < 18.0: # grey blocks
 				pass
 			else:
@@ -94,13 +191,10 @@ def parse(layout):
 		else:
 			assert False, "Unrecognized type: %s" % type(b)
 
-	vertical = sorted(vertical, reverse=True)
-	horizontal = sorted(horizontal, reverse=True)
-
-	return vertical, horizontal, lines
+	return verticals, horizontals, lines
 
 
-def layout():
+def main():
 	target_page = 13
 
 	parser = PDFParser(open('neihu.pdf', 'rb'))
@@ -121,11 +215,14 @@ def layout():
 
 		print 'layout.pageid:', layout.pageid
 
-		vertical, horizontal, lines = parse(layout)
-		html(vertical, horizontal, lines)
+		verticals, horizontals, lines = parse_page(layout)
+		groups = find_groups(verticals, horizontals, lines)
+
+		for idx, group in enumerate(groups):
+			gen_html('part{}.html'.format(idx), group['verticals'], group['horizontals'], group['lines'])
 
 
 
 if __name__ == '__main__':
-	layout()
+	main()
 
