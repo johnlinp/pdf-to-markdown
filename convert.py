@@ -109,16 +109,16 @@ def split_groups(big_group):
 	return small_groups
 
 
-def gen_html(filename, group):
-	fw = open(filename, 'w')
+def gen_html(group):
+	html = ''
 
 	page_height = 800 # for flipping the coordinate
 
-	fw.write('<meta charset="utf8" />')
-	fw.write('<svg width="100%" height="100%">')
+	html += '<meta charset="utf8" />'
+	html += '<svg width="100%" height="100%">'
 
 	# flip coordinate
-	fw.write('<g transform="translate(0, {}) scale(1, -1)">'.format(page_height))
+	html += '<g transform="translate(0, {}) scale(1, -1)">'.format(page_height)
 
 	rect = '<rect width="{width}" height="{height}" x="{x}" y="{y}" fill="{fill}"><title>{text}</title></rect>'
 
@@ -131,7 +131,7 @@ def gen_html(filename, group):
 			'text': text.get_text().encode('utf8'),
 			'fill': 'green',
 		}
-		fw.write(rect.format(**info))
+		html += rect.format(**info)
 
 	for vertical in group.verticals:
 		info = {
@@ -142,7 +142,7 @@ def gen_html(filename, group):
 			'text': '',
 			'fill': 'blue',
 		}
-		fw.write(rect.format(**info))
+		html += rect.format(**info)
 
 	for horizontal in group.horizontals:
 		info = {
@@ -153,11 +153,39 @@ def gen_html(filename, group):
 			'text': '',
 			'fill': 'red',
 		}
-		fw.write(rect.format(**info))
+		html += rect.format(**info)
 
-	fw.write('</g>')
-	fw.write('</svg>')
+	html += '</g>'
+	html += '</svg>'
 
+	return html
+
+
+def gen_paragraph_markdown(group):
+	markdown = ''
+	for text in group.texts:
+		content = text.get_text().encode('utf8').strip()
+		markdown += content + '\n\n'
+	return markdown
+
+
+def gen_table_markdown(group):
+	return ''
+
+
+def gen_markdown(group):
+	group_type = group.get_type()
+	if group_type == 'paragraph':
+		return gen_paragraph_markdown(group)
+	elif group_type == 'table':
+		return gen_table_markdown(group)
+	else:
+		raise Exception('unsupported markdown type')
+
+
+def write_file(filename, string):
+	with open(filename, 'w') as fw:
+		fw.write(string)
 
 def parse_page(layout):
 	group = Group()
@@ -212,9 +240,16 @@ def main():
 		group = parse_page(layout)
 		groups = split_groups(group)
 
-		for idx, group in enumerate(groups):
-			gen_html('part{}.html'.format(idx), group)
+		print 'len(groups):', len(groups)
 
+		for idx, group in enumerate(groups):
+			filename = 'part{}.html'.format(idx)
+			string = gen_html(group)
+			write_file(filename, string)
+
+			filename = 'part{}.md'.format(idx)
+			string = gen_markdown(group)
+			write_file(filename, string)
 
 
 if __name__ == '__main__':

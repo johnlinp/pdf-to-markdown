@@ -6,3 +6,9 @@ class Group(object):
 
 	def __nonzero__(self):
 		return bool(self.texts)
+
+	def get_type(self):
+		if self.verticals:
+			return 'table'
+		else:
+			return 'paragraph'
