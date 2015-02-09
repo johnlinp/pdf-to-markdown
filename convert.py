@@ -15,6 +15,7 @@ from pdfminer.layout import LTRect
 from pdfminer.layout import LTImage
 from pdfminer.layout import LTCurve
 from pdfminer.converter import PDFPageAggregator
+from group import Group
 
 
 def is_overlap(top, bottom, obj):
@@ -52,69 +53,63 @@ def find_included(top, bottom, objects):
 	return included
 
 
-def find_tables(verticals, horizontals, lines):
+def find_tables(group):
 	tables = []
 	visited = set()
-	for vertical in verticals:
+	for vertical in group.verticals:
 		if vertical in visited:
 			continue
 
-		near_verticals = find_near_verticals(vertical, verticals)
+		near_verticals = find_near_verticals(vertical, group.verticals)
 		top, bottom = calc_top_bottom(near_verticals)
-		included_horizontals = find_included(top, bottom, horizontals)
-		included_lines = find_included(top, bottom, lines)
+		included_horizontals = find_included(top, bottom, group.horizontals)
+		included_texts = find_included(top, bottom, group.texts)
 
-		table = {
-			'verticals': near_verticals,
-			'horizontals': included_horizontals,
-			'lines': included_lines,
-		}
+		table = Group()
+		table.verticals = near_verticals
+		table.horizontals = included_horizontals
+		table.texts = included_texts
 
 		tables.append(table)
 		visited.update(near_verticals)
 	return tables
 
 
-def find_paragraphs(lines, tables):
+def find_paragraphs(group, tables):
 	tops = []
 	for table in tables:
-		verticals = table['verticals']
-		top, bottom = calc_top_bottom(verticals)
+		top, bottom = calc_top_bottom(table.verticals)
 		tops.append(top)
 
-	all_table_lines = set()
+	all_table_texts = set()
 	for table in tables:
-		table_lines = table['lines']
-		all_table_lines.update(table_lines)
+		all_table_texts.update(table.texts)
 
 	num_slots = len(tables) + 1
-	paragraphs = [[] for idx in range(num_slots)]
-	for line in lines:
-		if line in all_table_lines:
+	paragraphs = [Group() for idx in range(num_slots)]
+	for text in group.texts:
+		if text in all_table_texts:
 			continue
 		for idx, table in enumerate(tables):
-			if line.y0 > tops[idx]:
-				paragraphs[idx].append(line)
+			if text.y0 > tops[idx]:
+				paragraphs[idx].texts.append(text)
 				break
 
 	paragraphs = filter(None, paragraphs)
-	paragraphs = [{'lines': paragraph, 'verticals': [], 'horizontals': []} for paragraph in paragraphs]
 
 	return paragraphs
 
 
-def find_groups(verticals, horizontals, lines):
-	groups = []
+def split_groups(big_group):
+	tables = find_tables(big_group)
+	paragraphs = find_paragraphs(big_group, tables)
 
-	tables = find_tables(verticals, horizontals, lines)
-	paragraphs = find_paragraphs(lines, tables)
+	small_groups = sorted(tables + paragraphs, reverse=True, key=lambda x: x.texts[0].y0)
 
-	groups = sorted(tables + paragraphs, reverse=True, key=lambda x: x['lines'][0].y0)
-
-	return groups
+	return small_groups
 
 
-def gen_html(filename, verticals, horizontals, lines):
+def gen_html(filename, group):
 	fw = open(filename, 'w')
 
 	page_height = 800 # for flipping the coordinate
@@ -127,18 +122,18 @@ def gen_html(filename, verticals, horizontals, lines):
 
 	rect = '<rect width="{width}" height="{height}" x="{x}" y="{y}" fill="{fill}"><title>{text}</title></rect>'
 
-	for line in lines:
+	for text in group.texts:
 		info = {
-			'width': line.x1 - line.x0,
-			'height': line.y1 - line.y0,
-			'x': line.x0,
-			'y': line.y0,
-			'text': line.get_text().encode('utf8'),
+			'width': text.x1 - text.x0,
+			'height': text.y1 - text.y0,
+			'x': text.x0,
+			'y': text.y0,
+			'text': text.get_text().encode('utf8'),
 			'fill': 'green',
 		}
 		fw.write(rect.format(**info))
 
-	for vertical in verticals:
+	for vertical in group.verticals:
 		info = {
 			'width': 1,
 			'height': vertical.y1 - vertical.y0,
@@ -149,7 +144,7 @@ def gen_html(filename, verticals, horizontals, lines):
 		}
 		fw.write(rect.format(**info))
 
-	for horizontal in horizontals:
+	for horizontal in group.horizontals:
 		info = {
 			'width': horizontal.x1 - horizontal.x0,
 			'height': 1,
@@ -165,8 +160,7 @@ def gen_html(filename, verticals, horizontals, lines):
 
 
 def parse_page(layout):
-	verticals, horizontals = [], []
-	lines = []
+	group = Group()
 
 	objstack = list(reversed(list(layout)))
 	while objstack:
@@ -174,12 +168,12 @@ def parse_page(layout):
 		if type(b) in [LTFigure, LTTextBox, LTTextLine, LTTextBoxHorizontal]:
 			objstack.extend(reversed(list(b)))
 		elif type(b) == LTTextLineHorizontal:
-			lines.append(b)
+			group.texts.append(b)
 		elif type(b) == LTRect:
 			if b.x1 - b.x0 < 1.0:
-				verticals.append(b)
+				group.verticals.append(b)
 			elif b.y1 - b.y0 < 1.0:
-				horizontals.append(b)
+				group.horizontals.append(b)
 			elif 15.0 < b.y1 - b.y0 < 18.0: # grey blocks
 				pass
 			else:
@@ -191,7 +185,7 @@ def parse_page(layout):
 		else:
 			assert False, "Unrecognized type: %s" % type(b)
 
-	return verticals, horizontals, lines
+	return group
 
 
 def main():
@@ -215,11 +209,11 @@ def main():
 
 		print 'layout.pageid:', layout.pageid
 
-		verticals, horizontals, lines = parse_page(layout)
-		groups = find_groups(verticals, horizontals, lines)
+		group = parse_page(layout)
+		groups = split_groups(group)
 
 		for idx, group in enumerate(groups):
-			gen_html('part{}.html'.format(idx), group['verticals'], group['horizontals'], group['lines'])
+			gen_html('part{}.html'.format(idx), group)
 
 
 
