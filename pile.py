@@ -57,14 +57,14 @@ class Pile(object):
 		return piles
 
 
-	def gen_markdown(self):
+	def gen_markdown(self, syntax):
 		pile_type = self.get_type()
 		if pile_type == 'paragraph':
-			return self.gen_paragraph_markdown()
+			return self.gen_paragraph_markdown(syntax)
 		elif pile_type == 'table':
-			return self.gen_table_markdown()
+			return self.gen_table_markdown(syntax)
 		else:
-			raise Exception('unsupported markdown type')
+			raise Exception('Unsupported markdown type')
 
 
 	def gen_html(self):
@@ -201,15 +201,37 @@ class Pile(object):
 		return included
 
 
-	def gen_paragraph_markdown(self):
+	def gen_paragraph_markdown(self, syntax):
 		markdown = ''
 		for text in self.texts:
-			content = text.get_text().encode('utf8').strip()
-			markdown += content + '\n\n'
+			pattern = syntax.pattern(text)
+			newline = syntax.newline(text)
+			content = syntax.purify(text)
+			if pattern.startswith('heading'):
+				if pattern.endswith('-1'):
+					markdown += '# ' + content + '\n\n'
+				elif pattern.endswith('-2'):
+					markdown += '## ' + content + '\n\n'
+				elif pattern.endswith('-3'):
+					markdown += '### ' + content + '\n\n'
+				else:
+					raise Exception('Unsupported header')
+			elif pattern.startswith('plain-text'):
+				if newline:
+					markdown += content + '\n\n'
+				else:
+					markdown += content
+			elif pattern.endswith('list-item'):
+				if newline:
+					markdown += '1. ' + content + '\n\n'
+				else:
+					markdown += '1. ' + content
+			else:
+				raise Exception('Unsupported syntax pattern')
 		return markdown
 
 
-	def gen_table_markdown(self):
+	def gen_table_markdown(self, syntax):
 		return ''
 
 

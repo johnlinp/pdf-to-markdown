@@ -7,6 +7,7 @@ from pdfminer.pdfdevice import PDFDevice
 from pdfminer.layout import LAParams
 from pdfminer.converter import PDFPageAggregator
 from pile import Pile
+from syntax import UrbanSyntax
 
 
 def main():
@@ -30,6 +31,7 @@ def main():
 
 		print 'layout.pageid:', layout.pageid
 
+		syntax = UrbanSyntax()
 		pile = Pile()
 		pile.parse_page(layout)
 		piles = pile.split_piles()
@@ -43,7 +45,7 @@ def main():
 				fw.write(string)
 
 			filename = 'part{}.md'.format(idx)
-			string = pile.gen_markdown()
+			string = pile.gen_markdown(syntax)
 			with open(filename, 'w') as fw:
 				fw.write(string)
 
