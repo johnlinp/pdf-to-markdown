@@ -1,4 +1,4 @@
-class Group(object):
+class Pile(object):
 	def __init__(self):
 		self.verticals = []
 		self.horizontals = []

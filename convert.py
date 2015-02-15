@@ -15,7 +15,7 @@ from pdfminer.layout import LTRect
 from pdfminer.layout import LTImage
 from pdfminer.layout import LTCurve
 from pdfminer.converter import PDFPageAggregator
-from group import Group
+from pile import Pile
 
 
 def is_overlap(top, bottom, obj):
@@ -53,19 +53,19 @@ def find_included(top, bottom, objects):
 	return included
 
 
-def find_tables(group):
+def find_tables(pile):
 	tables = []
 	visited = set()
-	for vertical in group.verticals:
+	for vertical in pile.verticals:
 		if vertical in visited:
 			continue
 
-		near_verticals = find_near_verticals(vertical, group.verticals)
+		near_verticals = find_near_verticals(vertical, pile.verticals)
 		top, bottom = calc_top_bottom(near_verticals)
-		included_horizontals = find_included(top, bottom, group.horizontals)
-		included_texts = find_included(top, bottom, group.texts)
+		included_horizontals = find_included(top, bottom, pile.horizontals)
+		included_texts = find_included(top, bottom, pile.texts)
 
-		table = Group()
+		table = Pile()
 		table.verticals = near_verticals
 		table.horizontals = included_horizontals
 		table.texts = included_texts
@@ -75,7 +75,7 @@ def find_tables(group):
 	return tables
 
 
-def find_paragraphs(group, tables):
+def find_paragraphs(pile, tables):
 	tops = []
 	for table in tables:
 		top, bottom = calc_top_bottom(table.verticals)
@@ -86,8 +86,8 @@ def find_paragraphs(group, tables):
 		all_table_texts.update(table.texts)
 
 	num_slots = len(tables) + 1
-	paragraphs = [Group() for idx in range(num_slots)]
-	for text in group.texts:
+	paragraphs = [Pile() for idx in range(num_slots)]
+	for text in pile.texts:
 		if text in all_table_texts:
 			continue
 		for idx, table in enumerate(tables):
@@ -100,16 +100,16 @@ def find_paragraphs(group, tables):
 	return paragraphs
 
 
-def split_groups(big_group):
-	tables = find_tables(big_group)
-	paragraphs = find_paragraphs(big_group, tables)
+def split_piles(big_pile):
+	tables = find_tables(big_pile)
+	paragraphs = find_paragraphs(big_pile, tables)
 
-	small_groups = sorted(tables + paragraphs, reverse=True, key=lambda x: x.texts[0].y0)
+	small_piles = sorted(tables + paragraphs, reverse=True, key=lambda x: x.texts[0].y0)
 
-	return small_groups
+	return small_piles
 
 
-def gen_html(group):
+def gen_html(pile):
 	html = ''
 
 	page_height = 800 # for flipping the coordinate
@@ -122,7 +122,7 @@ def gen_html(group):
 
 	rect = '<rect width="{width}" height="{height}" x="{x}" y="{y}" fill="{fill}"><title>{text}</title></rect>'
 
-	for text in group.texts:
+	for text in pile.texts:
 		info = {
 			'width': text.x1 - text.x0,
 			'height': text.y1 - text.y0,
@@ -133,7 +133,7 @@ def gen_html(group):
 		}
 		html += rect.format(**info)
 
-	for vertical in group.verticals:
+	for vertical in pile.verticals:
 		info = {
 			'width': 1,
 			'height': vertical.y1 - vertical.y0,
@@ -144,7 +144,7 @@ def gen_html(group):
 		}
 		html += rect.format(**info)
 
-	for horizontal in group.horizontals:
+	for horizontal in pile.horizontals:
 		info = {
 			'width': horizontal.x1 - horizontal.x0,
 			'height': 1,
@@ -161,24 +161,24 @@ def gen_html(group):
 	return html
 
 
-def gen_paragraph_markdown(group):
+def gen_paragraph_markdown(pile):
 	markdown = ''
-	for text in group.texts:
+	for text in pile.texts:
 		content = text.get_text().encode('utf8').strip()
 		markdown += content + '\n\n'
 	return markdown
 
 
-def gen_table_markdown(group):
+def gen_table_markdown(pile):
 	return ''
 
 
-def gen_markdown(group):
-	group_type = group.get_type()
-	if group_type == 'paragraph':
-		return gen_paragraph_markdown(group)
-	elif group_type == 'table':
-		return gen_table_markdown(group)
+def gen_markdown(pile):
+	pile_type = pile.get_type()
+	if pile_type == 'paragraph':
+		return gen_paragraph_markdown(pile)
+	elif pile_type == 'table':
+		return gen_table_markdown(pile)
 	else:
 		raise Exception('unsupported markdown type')
 
@@ -188,7 +188,7 @@ def write_file(filename, string):
 		fw.write(string)
 
 def parse_page(layout):
-	group = Group()
+	pile = Pile()
 
 	objstack = list(reversed(list(layout)))
 	while objstack:
@@ -196,12 +196,12 @@ def parse_page(layout):
 		if type(b) in [LTFigure, LTTextBox, LTTextLine, LTTextBoxHorizontal]:
 			objstack.extend(reversed(list(b)))
 		elif type(b) == LTTextLineHorizontal:
-			group.texts.append(b)
+			pile.texts.append(b)
 		elif type(b) == LTRect:
 			if b.x1 - b.x0 < 1.0:
-				group.verticals.append(b)
+				pile.verticals.append(b)
 			elif b.y1 - b.y0 < 1.0:
-				group.horizontals.append(b)
+				pile.horizontals.append(b)
 			elif 15.0 < b.y1 - b.y0 < 18.0: # grey blocks
 				pass
 			else:
@@ -213,7 +213,7 @@ def parse_page(layout):
 		else:
 			assert False, "Unrecognized type: %s" % type(b)
 
-	return group
+	return pile
 
 
 def main():
@@ -237,18 +237,18 @@ def main():
 
 		print 'layout.pageid:', layout.pageid
 
-		group = parse_page(layout)
-		groups = split_groups(group)
+		pile = parse_page(layout)
+		piles = split_piles(pile)
 
-		print 'len(groups):', len(groups)
+		print 'len(piles):', len(piles)
 
-		for idx, group in enumerate(groups):
+		for idx, pile in enumerate(piles):
 			filename = 'part{}.html'.format(idx)
-			string = gen_html(group)
+			string = gen_html(pile)
 			write_file(filename, string)
 
 			filename = 'part{}.md'.format(idx)
-			string = gen_markdown(group)
+			string = gen_markdown(pile)
 			write_file(filename, string)
 
 
