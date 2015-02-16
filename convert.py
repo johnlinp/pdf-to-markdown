@@ -1,3 +1,4 @@
+import sys
 from pdfminer.pdfparser import PDFParser
 from pdfminer.pdfdocument import PDFDocument
 from pdfminer.pdfpage import PDFPage
@@ -10,8 +11,11 @@ from pile import Pile
 from syntax import UrbanSyntax
 
 
-def main():
-	target_page = 13
+def main(argv):
+	if len(argv) == 2:
+		target_page = int(argv[1])
+	else:
+		target_page = 13
 
 	parser = PDFParser(open('neihu.pdf', 'rb'))
 	document = PDFDocument(parser)
@@ -51,5 +55,5 @@ def main():
 
 
 if __name__ == '__main__':
-	main()
+	main(sys.argv)
 

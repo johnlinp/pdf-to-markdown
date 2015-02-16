@@ -147,6 +147,8 @@ class Pile(object):
 			top, bottom = self.calc_top_bottom(table.verticals)
 			tops.append(top)
 
+		tops.append(float('-inf')) # for the last part of paragraph
+
 		all_table_texts = set()
 		for table in tables:
 			all_table_texts.update(table.texts)
@@ -156,8 +158,8 @@ class Pile(object):
 		for text in self.texts:
 			if text in all_table_texts:
 				continue
-			for idx, table in enumerate(tables):
-				if text.y0 > tops[idx]:
+			for idx, top in enumerate(tops):
+				if text.y0 > top:
 					paragraphs[idx].texts.append(text)
 					break
 
