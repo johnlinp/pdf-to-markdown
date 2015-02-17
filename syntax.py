@@ -31,11 +31,14 @@ class UrbanSyntax(Syntax):
 		if content.isdigit(): # page number
 			return 'none'
 
-		if 15.9 < text.height < 16.0:
+		if 17.9 < text.height < 18.1:
+			return 'heading-2'
+
+		if 20.0 < text.height < 20.1:
 			return 'heading-1'
 
-		if text.x0 < 90.1:
-			return 'unordered-list-item'
+		if 15.9 < text.height < 16.0:
+			return 'heading-1'
 
 		mo = re.search('^(一|二|三|四|五|六|七|八|九|十)、', content)
 		if mo:
@@ -48,6 +51,9 @@ class UrbanSyntax(Syntax):
 		mo = re.search('^\d+、', content)
 		if mo:
 			return 'ordered-list-item'
+
+		if text.x0 < 90.1: # special case for neihu page 2
+			return 'unordered-list-item'
 
 		return 'plain-text'
 
