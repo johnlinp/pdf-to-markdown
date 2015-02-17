@@ -209,30 +209,23 @@ class Pile(object):
 			pattern = syntax.pattern(text)
 			newline = syntax.newline(text)
 			content = syntax.purify(text)
+
 			if pattern == 'none':
 				continue
 			elif pattern.startswith('heading'):
-				if pattern.endswith('-1'):
-					markdown += '# ' + content + '\n\n'
-				elif pattern.endswith('-2'):
-					markdown += '## ' + content + '\n\n'
-				elif pattern.endswith('-3'):
-					markdown += '### ' + content + '\n\n'
-				else:
-					raise Exception('Unsupported header')
+				lead = '#' * int(pattern[-1])
+				markdown += lead + ' ' + content
 			elif pattern.startswith('plain-text'):
-				if newline:
-					markdown += content + '\n\n'
-				else:
-					markdown += content
+				markdown += content
 			elif pattern.endswith('list-item'):
-				lead = '1. ' if pattern.startswith('ordered') else '- '
-				if newline:
-					markdown += lead + content + '\n\n'
-				else:
-					markdown += lead + content
+				lead = '1.' if pattern.startswith('ordered') else '-'
+				markdown += lead + ' ' + content
 			else:
 				raise Exception('Unsupported syntax pattern')
+
+			if newline:
+				markdown += '\n\n'
+
 		return markdown
 
 
