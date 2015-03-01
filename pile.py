@@ -49,8 +49,8 @@ class Pile(object):
 
 
 	def split_piles(self):
-		tables = self.find_tables()
-		paragraphs = self.find_paragraphs(tables)
+		tables = self._find_tables()
+		paragraphs = self._find_paragraphs(tables)
 
 		piles = sorted(tables + paragraphs, reverse=True, key=lambda x: x.texts[0].y0)
 
@@ -60,9 +60,9 @@ class Pile(object):
 	def gen_markdown(self, syntax):
 		pile_type = self.get_type()
 		if pile_type == 'paragraph':
-			return self.gen_paragraph_markdown(syntax)
+			return self._gen_paragraph_markdown(syntax)
 		elif pile_type == 'table':
-			return self.gen_table_markdown(syntax)
+			return self._gen_table_markdown(syntax)
 		else:
 			raise Exception('Unsupported markdown type')
 
@@ -119,17 +119,17 @@ class Pile(object):
 		return html
 
 
-	def find_tables(self):
+	def _find_tables(self):
 		tables = []
 		visited = set()
 		for vertical in self.verticals:
 			if vertical in visited:
 				continue
 
-			near_verticals = self.find_near_verticals(vertical, self.verticals)
-			top, bottom = self.calc_top_bottom(near_verticals)
-			included_horizontals = self.find_included(top, bottom, self.horizontals)
-			included_texts = self.find_included(top, bottom, self.texts)
+			near_verticals = self._find_near_verticals(vertical, self.verticals)
+			top, bottom = self._calc_top_bottom(near_verticals)
+			included_horizontals = self._find_included(top, bottom, self.horizontals)
+			included_texts = self._find_included(top, bottom, self.texts)
 
 			table = Pile()
 			table.verticals = near_verticals
@@ -141,10 +141,10 @@ class Pile(object):
 		return tables
 
 
-	def find_paragraphs(self, tables):
+	def _find_paragraphs(self, tables):
 		tops = []
 		for table in tables:
-			top, bottom = self.calc_top_bottom(table.verticals)
+			top, bottom = self._calc_top_bottom(table.verticals)
 			tops.append(top)
 
 		tops.append(float('-inf')) # for the last part of paragraph
@@ -168,12 +168,13 @@ class Pile(object):
 		return paragraphs
 
 
-	def is_overlap(self, top, bottom, obj):
+	def _is_overlap(self, top, bottom, obj):
+		assert top > bottom
 		return (bottom - 1.0) <= obj.y0 <= (top + 1.0) or \
 			   (bottom - 1.0) <= obj.y1 <= (top + 1.0)
 
 
-	def calc_top_bottom(self, objects):
+	def _calc_top_bottom(self, objects):
 		top = float('-inf')
 		bottom = float('inf')
 		for obj in objects:
@@ -182,28 +183,28 @@ class Pile(object):
 		return top, bottom
 
 
-	def find_near_verticals(self, start, verticals):
+	def _find_near_verticals(self, start, verticals):
 		near_verticals = [start]
 		top = start.y1
 		bottom = start.y0
 		for vertical in verticals:
 			if vertical == start:
 				continue
-			if self.is_overlap(top, bottom, vertical):
+			if self._is_overlap(top, bottom, vertical):
 				near_verticals.append(vertical)
-				top, bottom = self.calc_top_bottom(near_verticals)
+				top, bottom = self._calc_top_bottom(near_verticals)
 		return near_verticals
 
 
-	def find_included(self, top, bottom, objects):
+	def _find_included(self, top, bottom, objects):
 		included = []
 		for obj in objects:
-			if self.is_overlap(top, bottom, obj):
+			if self._is_overlap(top, bottom, obj):
 				included.append(obj)
 		return included
 
 
-	def gen_paragraph_markdown(self, syntax):
+	def _gen_paragraph_markdown(self, syntax):
 		markdown = ''
 		for text in self.texts:
 			pattern = syntax.pattern(text)
@@ -229,7 +230,123 @@ class Pile(object):
 		return markdown
 
 
-	def gen_table_markdown(self, syntax):
-		return ''
+	def _gen_table_markdown(self, syntax):
+		intermediate = self._gen_table_intermediate()
+		return self._intermediate_to_markdown(intermediate)
+
+	def _gen_table_intermediate(self):
+		vertical_coor = self._calc_coordinates(self.verticals, 'x0', False)
+		horizontal_coor = self._calc_coordinates(self.horizontals, 'y0', True)
+		num_rows = len(horizontal_coor) - 1
+		num_cols = len(vertical_coor) - 1
+
+		intermediate = [[] for idx in range(num_rows)]
+		for row_idx in range(num_rows):
+			for col_idx in range(num_cols):
+				left = vertical_coor[col_idx]
+				top = horizontal_coor[row_idx]
+				right = vertical_coor[col_idx + 1]
+				bottom = horizontal_coor[row_idx + 1]
+
+				assert top > bottom
+
+				if self._is_ignore_cell(left, top, right, bottom):
+					continue
+
+				right, colspan = self._find_exist_coor(bottom, top, col_idx, vertical_coor, 'vertical')
+				bottom, rowspan = self._find_exist_coor(left, right, row_idx, horizontal_coor, 'horizontal')
+
+				cell = {}
+				cell['texts'] = ['something']
+				if colspan > 1:
+					cell['colspan'] = colspan
+				if rowspan > 1:
+					cell['rowspan'] = rowspan
+
+				intermediate[row_idx].append(cell)
+
+		return intermediate
+
+
+	def _is_ignore_cell(self, left, top, right, bottom):
+		left_exist = self._line_exists(left, bottom, top, 'vertical')
+		top_exist = self._line_exists(top, left, right, 'horizontal')
+		return not left_exist or not top_exist
+
+
+	def _find_exist_coor(self, minimum, maximum, start_idx, line_coor, direction):
+		span = 0
+		line_exist = False
+		while not line_exist:
+			span += 1
+			coor = line_coor[start_idx + span]
+			line_exist = self._line_exists(coor, minimum, maximum, direction)
+		return coor, span
+
+
+	def _line_exists(self, target, minimum, maximum, direction):
+		if direction == 'vertical':
+			lines = self.verticals
+			attr = 'x0'
+			fill_range = self._fill_vertical_range
+		elif direction == 'horizontal':
+			lines = self.horizontals
+			attr = 'y0'
+			fill_range = self._fill_horizontal_range
+		else:
+			raise 'No such direction'
+
+		for line in lines:
+			if getattr(line, attr) != target:
+				continue
+			if fill_range(minimum, maximum, line):
+				return True
+
+		return False
+
+
+	def _fill_vertical_range(self, bottom, top, obj):
+		assert top > bottom
+		return obj.y0 <= (bottom + 1.0) and (top - 1.0) <= obj.y1
+
+
+	def _fill_horizontal_range(self, left, right, obj):
+		return obj.x0 <= (left + 1.0) and (right - 1.0) <= obj.x1
+
+
+	def _intermediate_to_markdown(self, intermediate):
+		markdown = ''
+		markdown += self._create_tag('table', True, 0)
+		for row in intermediate:
+			markdown += self._create_tag('tr', True, 1)
+			for cell in row:
+				markdown += self._create_td_tag(cell)
+			markdown += self._create_tag('tr', False, 1)
+		markdown += self._create_tag('table', False, 0)
+		return markdown
+
+
+	def _create_tag(self, tag_name, start, level):
+		indent = '\t' * level
+		slash = '' if start else '/'
+		center = ' align="center"' if start else ''
+		return indent + '<' + slash + tag_name + center + '>\n'
+
+
+	def _create_td_tag(self, cell):
+		indent = '\t' * 2
+		texts = ' '.join(cell['texts'])
+		colspan = ' colspan={}'.format(cell['colspan']) if 'colspan' in cell else ''
+		rowspan = ' rowspan={}'.format(cell['rowspan']) if 'rowspan' in cell else ''
+		return indent + '<td' + colspan + rowspan + '>' + texts + '</td>\n'
+
+
+	def _calc_coordinates(self, axes, attr, reverse):
+		axes_set = set()
+		for axis in axes:
+			axes_set.add(getattr(axis, attr))
+		axes_list = list(axes_set)
+		axes_list.sort(reverse=reverse)
+		return axes_list
 
 
