@@ -23,7 +23,7 @@ class Converter(object):
 			self._interpreter.process_page(page)
 			layout = self._device.get_result()
 
-			if layout.pageid > max_page_num:
+			if max_page_num != None and layout.pageid > max_page_num:
 				break
 
 			self._pages[layout.pageid] = layout
@@ -58,7 +58,7 @@ class Converter(object):
 		pile.parse_page(page)
 		piles = pile.split_piles()
 
-		print 'len(piles):', len(piles)
+		#print 'len(piles):', len(piles)
 
 		for idx, pile in enumerate(piles):
 			filename = 'part{}.html'.format(idx)
