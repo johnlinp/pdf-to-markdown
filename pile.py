@@ -257,7 +257,7 @@ class Pile(object):
 				bottom, rowspan = self._find_exist_coor(left, right, row_idx, horizontal_coor, 'horizontal')
 
 				cell = {}
-				cell['texts'] = ['something']
+				cell['texts'] = self._find_cell_texts(left, top, right, bottom)
 				if colspan > 1:
 					cell['colspan'] = colspan
 				if rowspan > 1:
@@ -266,6 +266,19 @@ class Pile(object):
 				intermediate[row_idx].append(cell)
 
 		return intermediate
+
+
+	def _find_cell_texts(self, left, top, right, bottom):
+		texts = []
+		for text in self.texts:
+			if self._in_range(left, top, right, bottom, text):
+				texts.append(text)
+		return texts
+
+
+	def _in_range(self, left, top, right, bottom, obj):
+		return (left - 1.0) <= obj.x0 < obj.x1 <= (right + 1.0) and \
+			   (bottom - 1.0) <= obj.y0 < obj.y1 <= (top + 1.0)
 
 
 	def _is_ignore_cell(self, left, top, right, bottom):
@@ -335,7 +348,8 @@ class Pile(object):
 
 	def _create_td_tag(self, cell):
 		indent = '\t' * 2
-		texts = ' '.join(cell['texts'])
+		texts = [text.get_text().encode('utf8').strip() for text in cell['texts']]
+		texts = ' '.join(texts)
 		colspan = ' colspan={}'.format(cell['colspan']) if 'colspan' in cell else ''
 		rowspan = ' rowspan={}'.format(cell['rowspan']) if 'rowspan' in cell else ''
 		return indent + '<td' + colspan + rowspan + '>' + texts + '</td>\n'
