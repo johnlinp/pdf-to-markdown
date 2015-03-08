@@ -17,8 +17,10 @@ class Converter(object):
 		self._syntax = UrbanSyntax()
 		self._pages = {}
 
+		self._HTML_DEBUG = True
 
-	def parse(self, max_page_num=None):
+
+	def extract(self, max_page_num=None):
 		for page in PDFPage.create_pages(self._document):
 			self._interpreter.process_page(page)
 			layout = self._device.get_result()
@@ -30,12 +32,14 @@ class Converter(object):
 
 
 	def convert(self, page_num=None):
+		markdown = ''
 		if page_num == None:
-			for page in self._pages:
-				self._convert_page(page)
+			for page_num, page in self._pages.items():
+				markdown += self._convert_page(page)
 		else:
 			page = self._pages[page_num]
-			self._convert_page(page)
+			markdown = self._convert_page(page)
+		return markdown
 
 
 	def _read_file(self, filename):
@@ -54,20 +58,21 @@ class Converter(object):
 
 
 	def _convert_page(self, page):
+		markdown = ''
+
 		pile = Pile()
-		pile.parse_page(page)
+		pile.parse_layout(page)
 		piles = pile.split_piles()
-
-		#print 'len(piles):', len(piles)
-
 		for idx, pile in enumerate(piles):
-			filename = 'part{}.html'.format(idx)
-			string = pile.gen_html()
-			with open(filename, 'w') as fw:
-				fw.write(string)
+			print 'parsing pile', idx
 
-			filename = 'part{}.md'.format(idx)
-			string = pile.gen_markdown(self._syntax)
-			with open(filename, 'w') as fw:
-				fw.write(string)
+			if self._HTML_DEBUG:
+				filename = 'part{}.html'.format(idx)
+				string = pile.gen_html()
+				with open(filename, 'w') as fw:
+					fw.write(string)
+
+			markdown += pile.gen_markdown(self._syntax)
+
+		return markdown
 

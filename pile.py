@@ -14,6 +14,8 @@ class Pile(object):
 		self.horizontals = []
 		self.texts = []
 
+		self._SEARCH_DISTANCE = 1.0
+
 	def __nonzero__(self):
 		return bool(self.texts)
 
@@ -23,7 +25,7 @@ class Pile(object):
 		else:
 			return 'paragraph'
 
-	def parse_page(self, layout):
+	def parse_layout(self, layout):
 		objstack = list(reversed(list(layout)))
 		while objstack:
 			b = objstack.pop()
@@ -32,14 +34,10 @@ class Pile(object):
 			elif type(b) == LTTextLineHorizontal:
 				self.texts.append(b)
 			elif type(b) == LTRect:
-				if b.x1 - b.x0 < 1.0:
+				if b.width < 1.0:
 					self.verticals.append(b)
-				elif b.y1 - b.y0 < 1.0:
+				elif b.height < 1.0:
 					self.horizontals.append(b)
-				elif 15.0 < b.y1 - b.y0 < 18.0: # grey blocks
-					pass
-				else:
-					raise Exception('strange lines')
 			elif type(b) == LTImage:
 				pass
 			elif type(b) == LTCurve:
@@ -170,8 +168,8 @@ class Pile(object):
 
 	def _is_overlap(self, top, bottom, obj):
 		assert top > bottom
-		return (bottom - 1.0) <= obj.y0 <= (top + 1.0) or \
-			   (bottom - 1.0) <= obj.y1 <= (top + 1.0)
+		return (bottom - self._SEARCH_DISTANCE) <= obj.y0 <= (top + self._SEARCH_DISTANCE) or \
+			   (bottom - self._SEARCH_DISTANCE) <= obj.y1 <= (top + self._SEARCH_DISTANCE)
 
 
 	def _calc_top_bottom(self, objects):
@@ -277,8 +275,8 @@ class Pile(object):
 
 
 	def _in_range(self, left, top, right, bottom, obj):
-		return (left - 1.0) <= obj.x0 < obj.x1 <= (right + 1.0) and \
-			   (bottom - 1.0) <= obj.y0 < obj.y1 <= (top + 1.0)
+		return (left - self._SEARCH_DISTANCE) <= obj.x0 < obj.x1 <= (right + self._SEARCH_DISTANCE) and \
+			   (bottom - self._SEARCH_DISTANCE) <= obj.y0 < obj.y1 <= (top + self._SEARCH_DISTANCE)
 
 
 	def _is_ignore_cell(self, left, top, right, bottom):
@@ -307,7 +305,7 @@ class Pile(object):
 			attr = 'y0'
 			fill_range = self._fill_horizontal_range
 		else:
-			raise 'No such direction'
+			raise Exception('No such direction')
 
 		for line in lines:
 			if getattr(line, attr) != target:
@@ -320,11 +318,11 @@ class Pile(object):
 
 	def _fill_vertical_range(self, bottom, top, obj):
 		assert top > bottom
-		return obj.y0 <= (bottom + 1.0) and (top - 1.0) <= obj.y1
+		return obj.y0 <= (bottom + self._SEARCH_DISTANCE) and (top - self._SEARCH_DISTANCE) <= obj.y1
 
 
 	def _fill_horizontal_range(self, left, right, obj):
-		return obj.x0 <= (left + 1.0) and (right - 1.0) <= obj.x1
+		return obj.x0 <= (left + self._SEARCH_DISTANCE) and (right - self._SEARCH_DISTANCE) <= obj.x1
 
 
 	def _intermediate_to_markdown(self, intermediate):
@@ -336,6 +334,7 @@ class Pile(object):
 				markdown += self._create_td_tag(cell)
 			markdown += self._create_tag('tr', False, 1)
 		markdown += self._create_tag('table', False, 0)
+		markdown += '\n'
 		return markdown
 
 
@@ -356,11 +355,11 @@ class Pile(object):
 
 
 	def _calc_coordinates(self, axes, attr, reverse):
-		axes_set = set()
+		coor_set = set()
 		for axis in axes:
-			axes_set.add(getattr(axis, attr))
-		axes_list = list(axes_set)
-		axes_list.sort(reverse=reverse)
-		return axes_list
+			coor_set.add(getattr(axis, attr))
+		coor_list = list(coor_set)
+		coor_list.sort(reverse=reverse)
+		return coor_list
 
 
