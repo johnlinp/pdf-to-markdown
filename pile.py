@@ -26,24 +26,26 @@ class Pile(object):
 			return 'paragraph'
 
 	def parse_layout(self, layout):
-		objstack = list(reversed(list(layout)))
-		while objstack:
-			b = objstack.pop()
-			if type(b) in [LTFigure, LTTextBox, LTTextLine, LTTextBoxHorizontal]:
-				objstack.extend(reversed(list(b)))
-			elif type(b) == LTTextLineHorizontal:
-				self.texts.append(b)
-			elif type(b) == LTRect:
-				if b.width < 1.0:
-					self.verticals.append(b)
-				elif b.height < 1.0:
-					self.horizontals.append(b)
-			elif type(b) == LTImage:
+		obj_stack = list(reversed(list(layout)))
+		while obj_stack:
+			obj = obj_stack.pop()
+			if type(obj) in [LTFigure, LTTextBox, LTTextLine, LTTextBoxHorizontal]:
+				obj_stack.extend(reversed(list(obj)))
+			elif type(obj) == LTTextLineHorizontal:
+				self.texts.append(obj)
+			elif type(obj) == LTRect:
+				if obj.width < 1.0:
+					self._adjust_to_close(obj, self.verticals, 'x0')
+					self.verticals.append(obj)
+				elif obj.height < 1.0:
+					self._adjust_to_close(obj, self.horizontals, 'y0')
+					self.horizontals.append(obj)
+			elif type(obj) == LTImage:
 				pass
-			elif type(b) == LTCurve:
+			elif type(obj) == LTCurve:
 				pass
 			else:
-				assert False, "Unrecognized type: %s" % type(b)
+				assert False, "Unrecognized type: %s" % type(obj)
 
 
 	def split_piles(self):
@@ -116,6 +118,26 @@ class Pile(object):
 
 		return html
 
+
+	def _adjust_to_close(self, obj, lines, attr):
+		obj_coor = getattr(obj, attr)
+		close = None
+		for line in lines:
+			line_coor = getattr(line, attr)
+			if abs(obj_coor - line_coor) < self._SEARCH_DISTANCE:
+				close = line
+				break
+
+		if not close:
+			return
+
+		if attr == 'x0':
+			new_bbox = (close.bbox[0], obj.bbox[1], close.bbox[2], obj.bbox[3])
+		elif attr == 'y0':
+			new_bbox = (obj.bbox[0], close.bbox[1], obj.bbox[2], close.bbox[3])
+		else:
+			raise Exception('No such attr')
+		obj.set_bbox(new_bbox)
 
 	def _find_tables(self):
 		tables = []

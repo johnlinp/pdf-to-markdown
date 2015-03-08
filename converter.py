@@ -64,8 +64,6 @@ class Converter(object):
 		pile.parse_layout(page)
 		piles = pile.split_piles()
 		for idx, pile in enumerate(piles):
-			print 'parsing pile', idx
-
 			if self._HTML_DEBUG:
 				filename = 'part{}.html'.format(idx)
 				string = pile.gen_html()
