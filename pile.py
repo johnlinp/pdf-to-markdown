@@ -7,12 +7,14 @@ from pdfminer.layout import LTLine
 from pdfminer.layout import LTRect
 from pdfminer.layout import LTImage
 from pdfminer.layout import LTCurve
+import binascii
 
 class Pile(object):
 	def __init__(self):
 		self.verticals = []
 		self.horizontals = []
 		self.texts = []
+		self.images = []
 
 		self._SEARCH_DISTANCE = 1.0
 
@@ -22,6 +24,8 @@ class Pile(object):
 	def get_type(self):
 		if self.verticals:
 			return 'table'
+		elif self.images:
+			return 'image'
 		else:
 			return 'paragraph'
 
@@ -41,7 +45,7 @@ class Pile(object):
 					self._adjust_to_close(obj, self.horizontals, 'y0')
 					self.horizontals.append(obj)
 			elif type(obj) == LTImage:
-				pass
+				self.images.append(obj)
 			elif type(obj) == LTCurve:
 				pass
 			else:
@@ -51,8 +55,9 @@ class Pile(object):
 	def split_piles(self):
 		tables = self._find_tables()
 		paragraphs = self._find_paragraphs(tables)
+		images = self._find_images()
 
-		piles = sorted(tables + paragraphs, reverse=True, key=lambda x: x.texts[0].y0)
+		piles = sorted(tables + paragraphs + images, reverse=True, key=lambda x: x._get_anything().y0)
 
 		return piles
 
@@ -63,6 +68,8 @@ class Pile(object):
 			return self._gen_paragraph_markdown(syntax)
 		elif pile_type == 'table':
 			return self._gen_table_markdown(syntax)
+		elif pile_type == 'image':
+			return self._gen_image_markdown()
 		else:
 			raise Exception('Unsupported markdown type')
 
@@ -117,6 +124,12 @@ class Pile(object):
 		html += '</svg>'
 
 		return html
+
+
+	def get_image(self):
+		if not self.images:
+			raise Exception('No images here')
+		return self.images[0]
 
 
 	def _adjust_to_close(self, obj, lines, attr):
@@ -188,6 +201,23 @@ class Pile(object):
 		return paragraphs
 
 
+	def _find_images(self):
+		images = []
+		for image in self.images:
+			pile = Pile()
+			pile.images.append(image)
+			images.append(pile)
+		return images
+
+
+	def _get_anything(self):
+		if self.texts:
+			return self.texts[0]
+		if self.images:
+			return self.images[0]
+		raise Exception('The pile contains nothing')
+
+
 	def _is_overlap(self, top, bottom, obj):
 		assert top > bottom
 		return (bottom - self._SEARCH_DISTANCE) <= obj.y0 <= (top + self._SEARCH_DISTANCE) or \
@@ -253,6 +283,12 @@ class Pile(object):
 	def _gen_table_markdown(self, syntax):
 		intermediate = self._gen_table_intermediate()
 		return self._intermediate_to_markdown(intermediate)
+
+
+	def _gen_image_markdown(self):
+		image = self.get_image()
+		return '![{0}]({0})\n\n'.format(image.name)
+
 
 	def _gen_table_intermediate(self):
 		vertical_coor = self._calc_coordinates(self.verticals, 'x0', False)

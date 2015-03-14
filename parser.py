@@ -7,14 +7,12 @@ from pdfminer.pdfdevice import PDFDevice
 from pdfminer.layout import LAParams
 from pdfminer.converter import PDFPageAggregator
 from pile import Pile
-from syntax import UrbanSyntax
 
 
-class Converter(object):
+class Parser(object):
 	def __init__(self, filename):
 		self._document = self._read_file(filename)
 		self._device, self._interpreter = self._prepare_tools()
-		self._syntax = UrbanSyntax()
 		self._pages = {}
 
 		self._HTML_DEBUG = True
@@ -31,15 +29,15 @@ class Converter(object):
 			self._pages[layout.pageid] = layout
 
 
-	def convert(self, page_num=None):
-		markdown = ''
+	def parse(self, page_num=None):
+		piles = []
 		if page_num == None:
 			for page_num, page in self._pages.items():
-				markdown += self._convert_page(page)
+				piles += self._parse_page(page)
 		else:
 			page = self._pages[page_num]
-			markdown = self._convert_page(page)
-		return markdown
+			piles = self._parse_page(page)
+		return piles
 
 
 	def _read_file(self, filename):
@@ -57,20 +55,9 @@ class Converter(object):
 		return device, interpreter
 
 
-	def _convert_page(self, page):
-		markdown = ''
-
+	def _parse_page(self, page):
 		pile = Pile()
 		pile.parse_layout(page)
 		piles = pile.split_piles()
-		for idx, pile in enumerate(piles):
-			if self._HTML_DEBUG:
-				filename = 'part{}.html'.format(idx)
-				string = pile.gen_html()
-				with open(filename, 'w') as fw:
-					fw.write(string)
-
-			markdown += pile.gen_markdown(self._syntax)
-
-		return markdown
+		return piles
 

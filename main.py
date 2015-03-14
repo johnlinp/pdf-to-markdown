@@ -1,6 +1,7 @@
 import sys
-from converter import Converter
+from parser import Parser
 from writer import Writer
+from syntax import UrbanSyntax
 
 def main(argv):
 	if len(argv) == 2:
@@ -10,14 +11,17 @@ def main(argv):
 		page_num = None
 		print 'Parsing all pages'
 
-	converter = Converter('neihu.pdf')
-	converter.extract(page_num)
-	markdown = converter.convert(page_num)
+	parser = Parser('neihu.pdf')
+	parser.extract(page_num)
+	piles = parser.parse(page_num)
+
+	syntax = UrbanSyntax()
 
 	writer = Writer()
+	writer.set_syntax(syntax)
 	writer.set_mode('simple')
 	writer.set_title('neihu')
-	writer.write(markdown)
+	writer.write(piles)
 
 if __name__ == '__main__':
 	main(sys.argv)
