@@ -1,7 +1,5 @@
 import sys
-from parser import Parser
-from writer import Writer
-from syntax import UrbanSyntax
+import pdf2md
 
 def main(argv):
 	if len(argv) == 2:
@@ -11,13 +9,13 @@ def main(argv):
 		page_num = None
 		print 'Parsing all pages'
 
-	parser = Parser('neihu.pdf')
+	parser = pdf2md.Parser('neihu.pdf')
 	parser.extract(page_num)
 	piles = parser.parse(page_num)
 
-	syntax = UrbanSyntax()
+	syntax = pdf2md.UrbanSyntax()
 
-	writer = Writer()
+	writer = pdf2md.Writer()
 	writer.set_syntax(syntax)
 	writer.set_mode('simple')
 	writer.set_title('neihu')
