@@ -32,21 +32,21 @@ class UrbanSyntax(Syntax):
 			return 'none'
 
 		if 17.9 < text.height < 18.1:
-			return 'heading-2'
+			return 'heading-3'
 
 		if 20.0 < text.height < 20.1:
 			return 'heading-1'
 
 		if 15.9 < text.height < 16.0:
-			return 'heading-1'
+			return 'heading-2'
 
 		mo = re.search('^(一|二|三|四|五|六|七|八|九|十)、', content)
 		if mo:
-			return 'heading-2'
+			return 'heading-3'
 
 		mo = re.search('^(（|\()(一|二|三|四|五|六|七|八|九|十)(）|\))', content)
 		if mo:
-			return 'heading-3'
+			return 'heading-4'
 
 		mo = re.search('^\d+、', content)
 		if mo:

@@ -17,7 +17,7 @@ def main(argv):
 
 	writer = pdf2md.Writer()
 	writer.set_syntax(syntax)
-	writer.set_mode('simple')
+	writer.set_mode('gitbook')
 	writer.set_title('neihu')
 	writer.write(piles)
 

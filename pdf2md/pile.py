@@ -287,7 +287,7 @@ class Pile(object):
 
 	def _gen_image_markdown(self):
 		image = self.get_image()
-		return '![{0}]({0})\n\n'.format(image.name)
+		return '![{0}](images/{0})\n\n'.format(image.name)
 
 
 	def _gen_table_intermediate(self):
