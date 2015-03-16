@@ -1,6 +1,8 @@
 # -*- coding: utf8 -*-
 
 import os
+import re
+import pdb
 
 class Writer(object):
 	def __init__(self):
@@ -44,8 +46,7 @@ class Writer(object):
 
 
 	def _gen_gitbook_intermediate(self, piles):
-		return {
-			'title': '臺北市內湖區都市計畫通盤檢討（主要計畫）案',
+		intermediate = {
 			'readme': '# 臺北市政府',
 			'chapters': [
 				{
@@ -93,6 +94,16 @@ class Writer(object):
 			]
 		}
 
+		for pile in piles:
+			markdown = pile.gen_markdown(self._syntax)
+			lines = markdown.split('\n')
+			for line in lines:
+				mo = re.search('^# (.*)', markdown)
+				if mo and 'title' not in intermediate:
+					intermediate['title'] = mo.group(1)
+
+		return intermediate
+
 
 	def _mkdir_anyway(self, dirname):
 		if not os.path.exists(dirname):
@@ -108,6 +119,8 @@ class Writer(object):
 
 	def _write_gitbook_summary(self, book_dirname, intermediate):
 		lines = []
+		line = '* [{}](README.md)'.format(intermediate['title'])
+		lines.append(line)
 		chapters = intermediate['chapters']
 		for idx, chapter in enumerate(chapters):
 			line = '* [{}](chapter-{}/README.md)'.format(chapter['title'], idx)
