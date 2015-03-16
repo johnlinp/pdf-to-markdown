@@ -47,60 +47,85 @@ class Writer(object):
 
 	def _gen_gitbook_intermediate(self, piles):
 		intermediate = {
-			'readme': '# 臺北市政府',
 			'chapters': [
 				{
 					'title': '前言',
-					'readme': '# 前言',
+					'readme': ['# 前言'],
 					'sections': [
 						{
 							'title': '緣起',
-							'content': '# 緣起'
+							'content': ['# 緣起']
 						},
 						{
 							'title': '檢討目的',
-							'content': '# 檢討目的'
+							'content': ['# 檢討目的']
 						},
 						{
 							'title': '計畫範圍與年期',
-							'content': '# 計畫範圍與年期'
+							'content': ['# 計畫範圍與年期']
 						},
 					]
 				},
 				{
 					'title': '都市計畫發布情形',
-					'readme': '# 都市計畫發布情形',
+					'readme': ['# 都市計畫發布情形'],
 					'sections': [
 						{
 							'title': '原都市計畫情形',
-							'content': '# 原都市計畫情形'
+							'content': ['# 原都市計畫情形']
 						},
 					]
 				},
 				{
 					'title': '都市發展現況',
-					'readme': '# 都市發展現況',
+					'readme': ['# 都市發展現況'],
 					'sections': [
 						{
 							'title': '自然環境概況',
-							'content': '# 自然環境概況'
+							'content': ['# 自然環境概況']
 						},
 						{
 							'title': '社經發展概況',
-							'content': '# 社經發展概況'
+							'content': ['# 社經發展概況']
 						},
 					]
 				},
 			]
 		}
 
+		content = None
 		for pile in piles:
 			markdown = pile.gen_markdown(self._syntax)
 			lines = markdown.split('\n')
 			for line in lines:
-				mo = re.search('^# (.*)', markdown)
+				mo = re.search('^# (.*)', line)
 				if mo and 'title' not in intermediate:
 					intermediate['title'] = mo.group(1)
+					intermediate['readme'] = []
+					intermediate['chapters'] = []
+					content = intermediate['readme']
+
+				mo = re.search('^## (.*)', line)
+				if mo:
+					chapter = {}
+					chapter['title'] = mo.group(1)
+					chapter['readme'] = []
+					chapter['sections'] = []
+					intermediate['chapters'].append(chapter)
+					content = chapter['readme']
+
+				mo = re.search('^### (.*)', line)
+				if mo:
+					section = {}
+					section['title'] = mo.group(1)
+					section['content'] = []
+					intermediate['chapters'][-1]['sections'].append(section)
+					content = section['content']
+
+				if content == None:
+					continue
+
+				content.append(line)
 
 		return intermediate
 
@@ -130,7 +155,7 @@ class Writer(object):
 				line = '\t* [{}](chapter-{}/section-{}.md)'.format(section['title'], idx, jdx)
 				lines.append(line)
 
-		self._write_gitbook_file(os.path.join(book_dirname, 'SUMMARY.md'), '\n'.join(lines))
+		self._write_gitbook_file(os.path.join(book_dirname, 'SUMMARY.md'), lines)
 
 
 	def _write_gitbook_content(self, book_dirname, intermediate):
@@ -150,7 +175,7 @@ class Writer(object):
 
 	def _write_gitbook_file(self, filename, content):
 		with open(filename, 'w') as fwrite:
-			fwrite.write(content)
+			fwrite.write('\n'.join(content))
 
 
 	def _save_image(self, image, dirname):
