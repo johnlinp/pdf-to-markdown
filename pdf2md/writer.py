@@ -27,6 +27,17 @@ class Writer(object):
 			self._write_simple(piles)
 		elif self._mode == 'gitbook':
 			self._write_gitbook(piles)
+		else:
+			raise Exception('Unsupported mode: ' + self._mode)
+
+
+	def get_location(self):
+		if self._mode == 'simple':
+			return self._title + '.md'
+		elif self._mode == 'gitbook':
+			return self._title
+		else:
+			raise Exception('Unsupported mode: ' + self._mode)
 
 
 	def _write_simple(self, piles):
@@ -46,52 +57,7 @@ class Writer(object):
 
 
 	def _gen_gitbook_intermediate(self, piles):
-		intermediate = {
-			'chapters': [
-				{
-					'title': '前言',
-					'readme': ['# 前言'],
-					'sections': [
-						{
-							'title': '緣起',
-							'content': ['# 緣起']
-						},
-						{
-							'title': '檢討目的',
-							'content': ['# 檢討目的']
-						},
-						{
-							'title': '計畫範圍與年期',
-							'content': ['# 計畫範圍與年期']
-						},
-					]
-				},
-				{
-					'title': '都市計畫發布情形',
-					'readme': ['# 都市計畫發布情形'],
-					'sections': [
-						{
-							'title': '原都市計畫情形',
-							'content': ['# 原都市計畫情形']
-						},
-					]
-				},
-				{
-					'title': '都市發展現況',
-					'readme': ['# 都市發展現況'],
-					'sections': [
-						{
-							'title': '自然環境概況',
-							'content': ['# 自然環境概況']
-						},
-						{
-							'title': '社經發展概況',
-							'content': ['# 社經發展概況']
-						},
-					]
-				},
-			]
-		}
+		intermediate = {}
 
 		content = None
 		for pile in piles:
@@ -106,7 +72,7 @@ class Writer(object):
 					content = intermediate['readme']
 
 				mo = re.search('^## (.*)', line)
-				if mo:
+				if mo and 'title' in intermediate:
 					chapter = {}
 					chapter['title'] = mo.group(1)
 					chapter['readme'] = []
@@ -115,7 +81,7 @@ class Writer(object):
 					content = chapter['readme']
 
 				mo = re.search('^### (.*)', line)
-				if mo:
+				if mo and 'title' in intermediate:
 					section = {}
 					section['title'] = mo.group(1)
 					section['content'] = []
