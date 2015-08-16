@@ -7,6 +7,8 @@ from pdfminer.layout import LTLine
 from pdfminer.layout import LTRect
 from pdfminer.layout import LTImage
 from pdfminer.layout import LTCurve
+from pdfminer.layout import LTChar
+from pdfminer.layout import LTLine
 import binascii
 
 class Pile(object):
@@ -48,6 +50,10 @@ class Pile(object):
 				self.images.append(obj)
 			elif type(obj) == LTCurve:
 				pass
+			elif type(obj) == LTChar:
+				pass
+			elif type(obj) == LTLine:
+				pass					
 			else:
 				assert False, "Unrecognized type: %s" % type(obj)
 
