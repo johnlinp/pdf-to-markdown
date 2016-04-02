@@ -34,9 +34,9 @@ The `make cmap` is necessary for documents containing Chinese characters.
 
 Just type
 
-	python main.pdf <pdf>
+	python main.py <pdf>
 
 For example, you can use our example PDF file:
 
-	python main.pdf examples/neihu.pdf
+	python main.py examples/neihu.pdf
 
