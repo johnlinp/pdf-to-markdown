@@ -32,6 +32,11 @@ The `make cmap` is necessary for documents containing Chinese characters.
 
 # Usage
 
+After you downloaded `pdf-to-markdown`
+
+	git clone https://github.com/johnlinp/pdf-to-markdown.git
+	cd pdf-to-markdown
+
 Just type
 
 	python main.py <pdf>
