@@ -22,7 +22,7 @@ You should install pdfminer first.
 
 ### Else
 
-	git clone git@github.com:euske/pdfminer.git
+	git clone https://github.com/euske/pdfminer.git
 	cd pdfminer
 	make cmap
 	sudo python setup.py install
