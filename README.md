@@ -18,7 +18,7 @@ You should install pdfminer first.
 
 ### If your PDF file doesn't contain Chinese Characters
 
-	sudo apt-get install python-pdfminer
+	sudo pip install --upgrade pdfminer
 
 ### Else
 
