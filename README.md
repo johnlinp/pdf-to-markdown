@@ -14,20 +14,9 @@ From [this PDF file](https://github.com/johnlinp/pdf-to-markdown/blob/master/exa
 
 ## System Requirement
 
-You should install pdfminer first.
+You should install `pdfminer.six` first.
 
-### If your PDF file doesn't contain Chinese Characters
-
-	sudo pip install --upgrade pdfminer
-
-### Else
-
-	git clone https://github.com/euske/pdfminer.git
-	cd pdfminer
-	make cmap
-	sudo python setup.py install
-
-The `make cmap` is necessary for documents containing Chinese characters.
+	sudo pip install pdfminer.six
 
 
 # Usage
