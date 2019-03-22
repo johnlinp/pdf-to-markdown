@@ -28,9 +28,9 @@ After you downloaded `pdf-to-markdown`
 
 Just type
 
-	python2 main.py <pdf>
+	./main.py <pdf>
 
 For example, you can use our example PDF file:
 
-	python2 main.py examples/neihu.pdf
+	./main.py examples/neihu.pdf
 
