@@ -12,25 +12,19 @@ From [this PDF file](https://github.com/johnlinp/pdf-to-markdown/blob/master/exa
 - [Simple markdown](https://github.com/johnlinp/pdf-to-markdown/tree/master/examples/neihu.md)
 
 
-## System Requirement
+# Install
 
-You should install `pdfminer.six` first.
+Please type
 
-	sudo pip install pdfminer.six
+    sudo pip install pdf-to-markdown
 
 
 # Usage
 
-After you downloaded `pdf-to-markdown`
-
-	git clone https://github.com/johnlinp/pdf-to-markdown.git
-	cd pdf-to-markdown
-
 Just type
 
-	./main.py <pdf>
+    pdf2md <pdf>
 
 For example, you can use our example PDF file:
 
-	./main.py examples/neihu.pdf
-
+    pdf2md pdf-to-markdown/examples/neihu.pdf
