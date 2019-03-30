@@ -4,20 +4,24 @@ import pdb
 import re
 
 
-class Syntax(object):
+class BaseSyntax(object):
     def __init__(self):
         pass
 
 
-    def pattern(self):
+    def pattern(self, text):
         return 'plain-text'
 
 
-    def newline(self):
+    def newline(self, text):
         return True
 
 
-class UrbanSyntax(Syntax):
+    def purify(self, text):
+        return text.get_text().encode('utf8').strip()
+
+
+class UrbanSyntax(BaseSyntax):
     def __init__(self):
         pass
 
